@@ -107,6 +107,9 @@ router.post("/rent/:id", auth, async (req, res) => {
 // ============================
 // RETURN A BOOK (USER)
 // ============================
+// ============================
+// RETURN A BOOK (USER)
+// ============================
 router.post("/return/:id", auth, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -120,11 +123,19 @@ router.post("/return/:id", auth, async (req, res) => {
       return res.status(403).json({ message: "You did not rent this book" });
     }
 
+    // Find the rental
     const rental = await Rental.findOne({
       book: book._id,
       user: req.user._id,
       status: "active",
     });
+
+    if (!rental) return res.status(404).json({ message: "Active rental not found" });
+
+    // Ensure expiresAt exists (fix validation error)
+    if (!rental.expiresAt) {
+      rental.expiresAt = new Date(rental.rentedAt.getTime() + 7 * 24 * 60 * 60 * 1000); // default 7 days
+    }
 
     rental.status = "returned";
     rental.returnedAt = new Date();
@@ -134,13 +145,12 @@ router.post("/return/:id", auth, async (req, res) => {
     book.rentedBy = null;
     await book.save();
 
-    res.json({ message: "Book returned successfully" });
+    res.json({ message: "Book returned successfully", rental });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Return failed" });
+    res.status(500).json({ message: "Failed to return book" });
   }
 });
-
 
 
 // ============================
