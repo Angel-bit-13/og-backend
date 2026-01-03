@@ -52,4 +52,18 @@ router.put("/me", auth, async (req, res) => {
   }
 });
 
+
+// DELETE USER (ADMIN ONLY)
+router.delete("/:id", auth, admin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    await user.deleteOne();
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Delete failed" });
+  }
+});
+
+
 module.exports = router;
