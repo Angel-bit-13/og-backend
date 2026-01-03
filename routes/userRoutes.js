@@ -31,4 +31,25 @@ router.get("/", auth, admin, async (req, res) => {
   }
 });
 
+// UPDATE LOGGED-IN USER
+router.put("/me", auth, async (req, res) => {
+  try {
+    const updates = req.body; // get all fields to update
+    const user = await User.findById(req.user._id);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Update fields
+    Object.keys(updates).forEach((key) => {
+      user[key] = updates[key];
+    });
+
+    await user.save();
+    res.json(user); // send back updated user
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+});
+
 module.exports = router;
