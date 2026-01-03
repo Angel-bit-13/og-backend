@@ -23,7 +23,8 @@ router.get("/me", auth, async (req, res) => {
 
 router.get("/", auth, admin, async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+     const users = await User.find({ role: { $ne: "admin" } })
+      .select("-password");
     res.json(users);
   } catch (err) {
     console.log(err);
