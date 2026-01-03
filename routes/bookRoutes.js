@@ -82,15 +82,9 @@ router.post("/rent/:id", auth, async (req, res) => {
       return res.status(400).json({ message: "Book already rented" });
     }
 
-    // Set due date 7 days from now
     const rentedAt = new Date();
-    const expiresAt = new Date(rentedAt.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(rentedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    // Update book status
-    book.status = "rented";
-    await book.save();
-
-    // Create rental
     const rental = await Rental.create({
       user: req.user._id,
       book: book._id,
@@ -99,13 +93,17 @@ router.post("/rent/:id", auth, async (req, res) => {
       status: "active",
     });
 
-    res.status(201).json({ message: "Book rented successfully", rental });
+    book.status = "rented";
+    book.rentedBy = req.user._id;
+    await book.save();
+
+    res.status(201).json(rental);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Rent failed" });
   }
 });
-
+ 
 // ============================
 // RETURN A BOOK (USER)
 // ============================
@@ -114,22 +112,36 @@ router.post("/return/:id", auth, async (req, res) => {
     const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ message: "Book not found" });
 
+    if (book.status !== "rented") {
+      return res.status(400).json({ message: "Book is not rented" });
+    }
+
+    if (book.rentedBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "You did not rent this book" });
+    }
+
+    const rental = await Rental.findOne({
+      book: book._id,
+      user: req.user._id,
+      status: "active",
+    });
+
+    rental.status = "returned";
+    rental.returnedAt = new Date();
+    await rental.save();
+
     book.status = "available";
+    book.rentedBy = null;
     await book.save();
 
-    // Update the rental record
-    const rental = await Rental.findOneAndUpdate(
-      { book: book._id, status: "active" },
-      { status: "returned", returnedAt: new Date() },
-      { new: true }
-    );
-
-    res.json({ message: "Book returned successfully", rental });
+    res.json({ message: "Book returned successfully" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Return failed" });
   }
 });
+
+
 
 // ============================
 // LIKE A BOOK
