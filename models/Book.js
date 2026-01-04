@@ -42,17 +42,32 @@ const bookSchema = new mongoose.Schema(
       default: null,
     },
 
-    likedBy: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-
     coverImage: {
       type: String,
       required: true,
     },
+
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+    dislikes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+    ratings: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        value: Number,
+      },
+    ],
+    averageRating: { type: Number, default: 0 },
+    
+    comments: [
+      {
+        text: String,
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        userName: String,
+        createdAt: Date,
+      },
+    ],
+
   },
   { timestamps: true }
 );
