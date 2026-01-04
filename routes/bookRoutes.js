@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const router = express.Router();
 const Book = require("../models/Book");
 const auth = require("../middleware/authMiddleware");
@@ -107,9 +108,6 @@ router.post("/rent/:id", auth, async (req, res) => {
 // ============================
 // RETURN A BOOK (USER)
 // ============================
-// ============================
-// RETURN A BOOK (USER)
-// ============================
 router.post("/return/:id", auth, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -152,29 +150,144 @@ router.post("/return/:id", auth, async (req, res) => {
   }
 });
 
-
-// ============================
-// LIKE A BOOK
-// ============================
+// LIKE A BOOK (toggle)
 router.post("/like/:id", auth, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
     if (!book) return res.status(404).json({ message: "Book not found" });
 
-    const userId = req.user._id;
-    if (book.likedBy.includes(userId)) {
-      return res.status(400).json({ message: "You already liked this book" });
+    const userId = req.user._id.toString();
+
+    // Remove dislike if exists
+    if (book.dislikes.includes(userId)) {
+      book.dislikes = book.dislikes.filter((id) => id.toString() !== userId);
     }
 
-    book.likedBy.push(userId);
+    // Toggle like
+    if (book.likes.includes(userId)) {
+      // Already liked → remove like (toggle off)
+      book.likes = book.likes.filter((id) => id.toString() !== userId);
+    } else {
+      book.likes.push(userId);
+    }
+
     await book.save();
 
-    res.json({ message: "Book liked successfully", book });
+    res.json({
+      message: "Book like toggled",
+      liked: book.likes.includes(userId),
+      disliked: book.dislikes.includes(userId),
+      likesCount: book.likes.length,
+      dislikesCount: book.dislikes.length,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
+
+
+// DISLIKE A BOOK
+router.post("/dislike/:id", auth, async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) return res.status(404).json({ message: "Book not found" });
+
+    const userId = req.user._id.toString();
+
+    // Remove like if exists
+    if (book.likes.includes(userId)) {
+      book.likes = book.likes.filter((id) => id.toString() !== userId);
+    }
+
+    // Toggle dislike
+    if (book.dislikes.includes(userId)) {
+      // Already disliked → do nothing
+    } else {
+      book.dislikes.push(userId);
+    }
+
+    await book.save();
+
+    res.json({
+      message: "Book disliked",
+      liked: book.likes.includes(userId),
+      disliked: book.dislikes.includes(userId),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ============================
+// RATE A BOOK
+// ============================
+router.post("/rate/:id", auth, async (req, res) => {
+  try {
+    const { rating } = req.body;
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "Invalid rating" });
+    }
+
+    const book = await Book.findById(req.params.id);
+    if (!book) return res.status(404).json({ message: "Book not found" });
+
+    book.ratings = book.ratings || [];
+
+    // Remove old rating by user
+    book.ratings = book.ratings.filter(
+      (r) => r.user.toString() !== req.user._id.toString()
+    );
+
+    book.ratings.push({
+      user: req.user._id,
+      value: rating,
+    });
+
+    book.averageRating =
+      book.ratings.reduce((sum, r) => sum + r.value, 0) /
+      book.ratings.length;
+
+    await book.save();
+
+    res.json({ averageRating: book.averageRating });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Rating failed" });
+  }
+});
+
+// ============================
+// ADD COMMENT
+// ============================
+router.post("/comment/:id", auth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ message: "Empty comment" });
+
+    const book = await Book.findById(req.params.id);
+    if (!book) return res.status(404).json({ message: "Book not found" });
+
+    book.comments = book.comments || [];
+
+    const comment = {
+      text,
+      user: req.user._id,
+      userName: req.user.name || "Anonymous",
+      createdAt: new Date(),
+    };
+
+    book.comments.push(comment);
+    await book.save();
+
+    res.status(201).json(comment);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Comment failed" });
+  }
+});
+
 
 // ============================
 // GET ALL BOOKS
