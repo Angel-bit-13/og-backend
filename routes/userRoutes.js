@@ -10,7 +10,7 @@ router.get("/me", auth, async (req, res) => {
     // req.user is set by authMiddleware
     const user = await User.findById(req.user.id)
       .select("-password") // exclude password
-      .populate("likedBooks"); // populate book info if needed
+      .populate("rentedBooks"); // populate book info if needed
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
