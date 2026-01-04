@@ -40,6 +40,9 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Book"
     }],
+    
+    rentedBooks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Book" }],
+
     rentedBooksCount: {
         type: Number,
         default: 0
