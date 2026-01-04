@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
 const Book = require("../models/Book");
+const User = require("../models/User");
 const auth = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const Rental = require("../models/Rental");
@@ -94,6 +95,12 @@ router.post("/rent/:id", auth, async (req, res) => {
       status: "active",
     });
 
+    const loggedUser = await User.findById(req.user._id);
+    loggedUser.rentedBooks.push(book._id);
+    loggedUser.rentedBooksCount += 1;
+    await loggedUser.save();
+
+
     book.status = "rented";
     book.rentedBy = req.user._id;
     await book.save();
@@ -143,6 +150,11 @@ router.post("/return/:id", auth, async (req, res) => {
     book.rentedBy = null;
     await book.save();
 
+    const loggedUser = await User.findById(req.user._id);
+    loggedUser.rentedBooks = loggedUser.rentedBooks.filter((id) => id.toString() !== book._id.toString());
+    loggedUser.rentedBooksCount -= 1;
+    await loggedUser.save();
+
     res.json({ message: "Book returned successfully", rental });
   } catch (err) {
     console.error(err);
@@ -174,11 +186,10 @@ router.post("/like/:id", auth, async (req, res) => {
     await book.save();
 
     res.json({
-      message: "Book like toggled",
+      message: "Book liked",
       liked: book.likes.includes(userId),
       disliked: book.dislikes.includes(userId),
-      likesCount: book.likes.length,
-      dislikesCount: book.dislikes.length,
+      
     });
   } catch (err) {
     console.error(err);
