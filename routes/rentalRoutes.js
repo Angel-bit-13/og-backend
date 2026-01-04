@@ -10,7 +10,7 @@ const Book = require("../models/Book");
 ========================= */
 router.get("/", auth, admin, async (req, res) => {
   try {
-    const rentals = await Rental.find()
+    const rentals = await Rental.find({status: "active"})
       .populate("user", "name email")
       .populate("book", "title author");
 
