@@ -3,6 +3,7 @@ const auth = require("../middleware/authMiddleware");
 const User = require("../models/User");
 const admin = require("../middleware/adminMiddleware");
 const router = express.Router();
+const Rental = require("../models/Rental");
 
 // GET logged-in user's profile
 router.get("/me", auth, async (req, res) => {
@@ -10,10 +11,18 @@ router.get("/me", auth, async (req, res) => {
     // req.user is set by authMiddleware
     const user = await User.findById(req.user.id)
       .select("-password") // exclude password
-      .populate("rentedBooks"); // populate book info if needed
+      .lean()
 
     if (!user) return res.status(404).json({ message: "User not found" });
+    const rentals = await Rental.find({ user: req.user.id, status: "active" })
+      .populate("book") // get book info
+      .lean();
 
+    // Attach expiresAt to each book
+    user.rentedBooksWithDue = rentals.map(r => ({
+      ...r.book,
+      expiresAt: r.expiresAt,
+    }))
     res.json(user);
   } catch (err) {
     console.log(err);
