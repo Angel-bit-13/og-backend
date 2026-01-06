@@ -23,22 +23,28 @@ router.get("/books", auth, admin, async (req, res) => {
 // ============================
 // CREATE A BOOK (ADMIN)
 // ============================
-router.post("/admin", auth, admin, async (req, res) => {
+router.post("/admin/books", auth, admin, async (req, res) => {
   try {
-    const { title, author, publicationYear, genre, ISBN } = req.body;
+    const { title, author, publicationYear, genre, coverImage } = req.body;
 
-    const existingBook = await Book.findOne({ ISBN });
-    if (existingBook) {
-      return res.status(400).json({ message: "Book with this ISBN already exists" });
+    if (!title || !author || !publicationYear || !genre || !coverImage) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
-    const newBook = new Book({ title, author, publicationYear, genre, ISBN });
+    const newBook = new Book({
+      title,
+      author,
+      publicationYear: Number(publicationYear),
+      genre,
+      coverImage,
+    });
+
     await newBook.save();
 
     res.status(201).json({ message: "Book added successfully", book: newBook });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("ADD BOOK ERROR 👉", err);
+    res.status(500).json({ message: err.message });
   }
 });
 
