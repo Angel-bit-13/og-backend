@@ -76,4 +76,24 @@ router.delete("/:id", auth, admin, async (req, res) => {
 });
 
 
+// Update user by admin
+router.put("/:id", auth, admin, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const updatedData = req.body; // Expect updated fields like { name, email, role }
+
+        // Update user in DB
+        const updatedUser = await User.findByIdAndUpdate(userId, updatedData, { new: true });
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(updatedUser);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 module.exports = router;
